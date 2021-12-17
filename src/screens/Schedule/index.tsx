@@ -1,7 +1,7 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { format } from 'date-fns';
 import React, { useState } from 'react';
-import { Alert, StatusBar } from 'react-native';
+import { StatusBar } from 'react-native';
 import { useTheme } from 'styled-components';
 import ArrowSvg from '../../assets/arrow.svg';
 import { BackButton } from '../../components/BackButton';
@@ -55,14 +55,18 @@ export function Schedule() {
   const { car } = route.params as Params;
 
   function handleConfirmRentalDetails() {
-    if (!rentalPeriod.startFormatted || !rentalPeriod.endFormatted) {
-      Alert.alert('Selecione o período para alugar');
-    } else {
-      navigation.navigate('ScheduleDetails', {
-        car,
-        dates: Object.keys(markedDates),
-      });
-    }
+    // if (!rentalPeriod.startFormatted || !rentalPeriod.endFormatted) {
+    //   Alert.alert('Selecione o período para alugar');
+    // } else {
+    //   navigation.navigate('ScheduleDetails', {
+    //     car,
+    //     dates: Object.keys(markedDates),
+    //   });
+    // }
+    navigation.navigate('ScheduleDetails', {
+      car,
+      dates: Object.keys(markedDates),
+    });
   }
 
   function handleBack() {
@@ -137,7 +141,11 @@ export function Schedule() {
       </Content>
 
       <Footer>
-        <Button title='Confirmar' onPress={handleConfirmRentalDetails} />
+        <Button
+          title='Confirmar'
+          onPress={handleConfirmRentalDetails}
+          enabled={!!rentalPeriod.startFormatted}
+        />
       </Footer>
     </Container>
   );

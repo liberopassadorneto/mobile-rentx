@@ -50,6 +50,7 @@ interface RentalPeriod {
 }
 
 export function ScheduleDetails() {
+  const [isLoading, setIsLoading] = useState(false);
   const [rentalPeriod, setRentalPeriod] = useState<RentalPeriod>(
     {} as RentalPeriod
   );
@@ -61,6 +62,8 @@ export function ScheduleDetails() {
   const rentTotal = Number(dates.length * car.rent.price);
 
   async function handleRentalComplete() {
+    setIsLoading(true);
+
     const schedulesByCar = await api.get(`/schedules_bycars/${car.id}`);
 
     const unavailable_dates = [
@@ -87,6 +90,7 @@ export function ScheduleDetails() {
       .catch((err) => {
         console.log(err);
         Alert.alert('Não foi possível confirmar o agendamento');
+        setIsLoading(false);
       });
   }
 
@@ -176,6 +180,8 @@ export function ScheduleDetails() {
             title='Alugar agora'
             color={theme.colors.success}
             onPress={handleRentalComplete}
+            enabled={!isLoading}
+            loading={isLoading}
           />
         </Footer>
       </Content>
