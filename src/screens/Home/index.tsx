@@ -1,3 +1,5 @@
+import { synchronize } from '@nozbe/watermelondb/sync';
+import { useNetInfo } from '@react-native-community/netinfo';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'react-native';
@@ -7,6 +9,8 @@ import { RFValue } from 'react-native-responsive-fontsize';
 import Logo from '../../assets/logo.svg';
 import { Car } from '../../components/Car';
 import { LoadAnimation } from '../../components/LoadAnimation';
+import { database } from '../../database';
+import { Car as ModelCar } from '../../database/models/Car';
 import { CarDTO } from '../../dtos/CarDTO';
 import { api } from '../../services/api';
 import { CarList, Container, Header, HeaderContent, TotalCars } from './styles';
@@ -14,8 +18,9 @@ import { CarList, Container, Header, HeaderContent, TotalCars } from './styles';
 const ButtonAnimated = Animated.createAnimatedComponent(RectButton);
 
 export function Home() {
-  const [cars, setCars] = useState<CarDTO[]>([]);
+  const [cars, setCars] = useState<ModelCar[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const netInfo = useNetInfo();
   const navigation = useNavigation<any>();
   // const theme = useTheme();
 
@@ -50,6 +55,27 @@ export function Home() {
     navigation.navigate('CarDetails', { car });
   }
 
+  async function offlineSynchronize() {
+    await synchronize({
+      database,
+      pullChanges: async ({ lastPulledAt }) => {
+        const response = await api.get(
+          `cars/sync/pull?lastPulletAt=${lastPulledAt || 0}`
+        );
+        const { changes, latestVersion } = response.data;
+        // console.log('BACKEND PARA O APP');
+        // console.log(changes);
+        return { changes, timestamp: latestVersion };
+      },
+      pushChanges: async ({ changes }) => {
+        // console.log('APP PARA O BACKEND');
+        // console.log(changes);
+        const user = changes.users;
+        await api.post('/users/sync', user);
+      },
+    });
+  }
+
   // function handleOpenMyCars() {
   //   navigation.navigate('MyCars');
   // }
@@ -59,10 +85,12 @@ export function Home() {
 
     async function fetchCars() {
       try {
-        const response = await api.get('/cars');
-        // console.log(response);
+        const carCollection = database.get<ModelCar>('cars');
+        // console.log(carCollection);
+        const cars = await carCollection.query().fetch();
+
         if (isMounted) {
-          setCars(response.data);
+          setCars(cars);
         }
       } catch (error) {
         console.log(error);
@@ -77,6 +105,44 @@ export function Home() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (netInfo.isConnected === true) {
+      offlineSynchronize();
+    }
+  }, [netInfo.isConnected]);
+
+  // useEffect(() => {
+  //   let isMounted = true;
+
+  //   async function fetchCars() {
+  //     try {
+  //       const response = await api.get('/cars');
+  //       // console.log(response);
+  //       if (isMounted) {
+  //         setCars(response.data);
+  //       }
+  //     } catch (error) {
+  //       console.log(error);
+  //     } finally {
+  //       if (isMounted) {
+  //         setIsLoading(false);
+  //       }
+  //     }
+  //   }
+  //   fetchCars();
+  //   return () => {
+  //     isMounted = false;
+  //   };
+  // }, []);
+
+  // useEffect(() => {
+  //   if (netInfo.isConnected) {
+  //     Alert.alert('Você online!');
+  //   } else {
+  //     Alert.alert('Você está off-line');
+  //   }
+  // }, [netInfo.isConnected]);
 
   // Usei este useEffect quando a screen Home era somente Stack Navigation.
   // Agora, a screen Home é Tab/Stack Navigation.
@@ -100,6 +166,8 @@ export function Home() {
           {!isLoading && <TotalCars>Total de {cars.length} carros</TotalCars>}
         </HeaderContent>
       </Header>
+
+      {/* <Button title='Sincronizar' onPress={offlineSynchronize} /> */}
 
       {isLoading ? (
         <LoadAnimation />
