@@ -14,6 +14,12 @@ import { ThemeProvider } from 'styled-components';
 import { AppProvider } from './src/hooks';
 import { Routes } from './src/routes';
 import theme from './src/styles/theme';
+import { LogBox } from 'react-native';
+
+LogBox.ignoreLogs([
+  'Found screens with the same name nested inside one another.',
+]);
+
 
 export function App() {
   const [fontsLoaded] = useFonts({

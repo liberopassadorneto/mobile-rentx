@@ -54,10 +54,19 @@ export function Splash() {
   }
 
   useEffect(() => {
-    splashAnimation.value = withTiming(50, { duration: 2000 }, () => {
-      'worklet';
-      runOnJS(startApp)();
-    });
+    let isMounted = true;
+
+    if (!isMounted) {
+      splashAnimation.value = withTiming(50, { duration: 2000 }, () => {
+        'worklet';
+        runOnJS(startApp)();
+      });
+    }
+
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return (
