@@ -1,7 +1,7 @@
 import { synchronize } from '@nozbe/watermelondb/sync';
 import { useNetInfo } from '@react-native-community/netinfo';
 import { useNavigation } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { StatusBar } from 'react-native';
 import { RectButton } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
@@ -22,6 +22,8 @@ export function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const netInfo = useNetInfo();
   const navigation = useNavigation<any>();
+  const synchronizing = useRef(false);
+
   // const theme = useTheme();
 
   // const positionX = useSharedValue(0);
@@ -55,26 +57,24 @@ export function Home() {
     navigation.navigate('CarDetails', { car });
   }
 
-  async function offlineSynchronize() {
+  const offlineSynchronize = useCallback(async () => {
     await synchronize({
       database,
       pullChanges: async ({ lastPulledAt }) => {
         const response = await api.get(
-          `cars/sync/pull?lastPulletAt=${lastPulledAt || 0}`
+          `cars/sync/pull?lastPulledVersion=${lastPulledAt || 0}`
         );
+
         const { changes, latestVersion } = response.data;
-        // console.log('BACKEND PARA O APP');
-        // console.log(changes);
         return { changes, timestamp: latestVersion };
       },
       pushChanges: async ({ changes }) => {
-        // console.log('APP PARA O BACKEND');
-        // console.log(changes);
         const user = changes.users;
-        await api.post('/users/sync', user);
-      },
+        await api.post("/users/sync", user);
+      }
     });
-  }
+  }, []);
+
 
   // function handleOpenMyCars() {
   //   navigation.navigate('MyCars');
@@ -100,16 +100,31 @@ export function Home() {
         }
       }
     }
+
     fetchCars();
+
     return () => {
       isMounted = false;
     };
   }, []);
 
   useEffect(() => {
-    if (netInfo.isConnected === true) {
-      offlineSynchronize();
+    const syncChanges = async () => {
+      if (netInfo.isConnected && !synchronizing.current) {
+        synchronizing.current = true;
+        try {
+          await offlineSynchronize();
+        }
+        catch (err) {
+          console.log(err);
+        }
+        finally {
+          synchronizing.current = false;
+        }
+      }
     }
+
+    syncChanges();
   }, [netInfo.isConnected]);
 
   // useEffect(() => {
